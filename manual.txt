@@ -3,6 +3,8 @@ DTN Mirrors manual
 Connections
 LED	Color	Arduino
 GND	Black	GND
-CO	Green	?
-DO	Yellow	?
+CO	Green	5
+DO	Yellow	4
 5V	Red	5V
+MAT	Black	2 (INPUT)
+MAT	Black 	3 (GND)

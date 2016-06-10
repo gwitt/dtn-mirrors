@@ -10,7 +10,7 @@
 #include <SPI.h>         // COMMENT OUT THIS LINE FOR GEMMA OR TRINKET
 //#include <avr/power.h> // ENABLE THIS LINE FOR GEMMA OR TRINKET
 
-#define NUMPIXELS 104 // Number of LEDs in strip
+#define NUMPIXELS 322 // Number of LEDs in strip
 #define NUMSPARKS 10
 #define NUMGLOWS 60
 #define GLOWRADIUS 20
@@ -78,7 +78,7 @@ void loop() {
   
   for (int i=0; i<NUMGLOWS; i++){
     if (millis() > glowstarts[i] + GLOWTIME){
-      if (!digitalRead(A0)){
+      if (!digitalRead(matPin)){
         glowstarts[i]= millis()+random(1000);
         glowlocs[i]= random(NUMPIXELS);
         //glowlocs[i]= GLOWRADIUS + random(NUMPIXELS-2*GLOWRADIUS);
