@@ -19,6 +19,11 @@
 // Here's how to control the LEDs from any two pins:
 #define DATAPIN    4
 #define CLOCKPIN   5
+
+#define matPin 2
+#define gndPin 3
+
+
 Adafruit_DotStar strip = Adafruit_DotStar(
   NUMPIXELS, DATAPIN, CLOCKPIN, DOTSTAR_BRG);
 // The last parameter is optional -- this is the color data order of the
@@ -40,8 +45,11 @@ int sparklocs[NUMSPARKS];
 unsigned char pixels[NUMPIXELS];
 
 void setup() {
-  pinMode(A0, INPUT);
-  digitalWrite(A0, HIGH);
+  pinMode(matPin, INPUT);
+  digitalWrite(matPin, HIGH);
+
+  pinMode(gndPin, OUTPUT);
+  digitalWrite(gndPin, LOW);
   
   for (int i=0; i<NUMSPARKS; i++){
     sparklocs[i]= random(NUMPIXELS);
@@ -101,7 +109,7 @@ void loop() {
     
   }
   
-  if(digitalRead(A0)){
+  if(digitalRead(matPin)){
     for (int i=0; i<NUMPIXELS; i++) if (pixels[i] >0) pixels[i]--;
   }
   
