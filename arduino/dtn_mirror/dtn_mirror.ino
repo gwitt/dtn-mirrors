@@ -1,87 +1,61 @@
-// Simple strand test for Adafruit Dot Star RGB LED strip.
-// This is a basic diagnostic tool, NOT a graphics demo...helps confirm
-// correct wiring and tests each pixel's ability to display red, green
-// and blue and to forward data down the line.  By limiting the number
-// and color of LEDs, it's reasonably safe to power a couple meters off
-// the Arduino's 5V pin.  DON'T try that with other code!
+#include <SPI.h>
 
-#include <Adafruit_DotStar.h>
-// Because conditional #includes don't work w/Arduino sketches...
-#include <SPI.h>         // COMMENT OUT THIS LINE FOR GEMMA OR TRINKET
-//#include <avr/power.h> // ENABLE THIS LINE FOR GEMMA OR TRINKET
+#define NUMPIXELS 1200
+#define LOOPLENGTH NUMPIXELS/2
+#define NUMGLOWS 50
+#define GLOWRADIUS 10
+#define GLOWTIME 800
 
-#define NUMPIXELS 322 // Number of LEDs in strip
-#define NUMSPARKS 10
-#define NUMGLOWS 60
-#define GLOWRADIUS 20
-#define GLOWTIME 1000
-
-// Here's how to control the LEDs from any two pins:
-#define DATAPIN    4
-#define CLOCKPIN   5
-
-#define matPin 2
-#define gndPin 3
-
-
-Adafruit_DotStar strip = Adafruit_DotStar(
-  NUMPIXELS, DATAPIN, CLOCKPIN, DOTSTAR_BRG);
-// The last parameter is optional -- this is the color data order of the
-// DotStar strip, which has changed over time in different production runs.
-// Your code just uses R,G,B colors, the library then reassigns as needed.
-// Default is DOTSTAR_BRG, so change this if you have an earlier strip.
-
-// Hardware SPI is a little faster, but must be wired to specific pins
-// (Arduino Uno = pin 11 for data, 13 for clock, other boards are different).
-//Adafruit_DotStar strip = Adafruit_DotStar(NUMPIXELS, DOTSTAR_BRG);
+#define MATPIN 2
+#define GNDPIN 3
 
 unsigned long glowstarts[NUMGLOWS];
 unsigned long glowlocs[NUMGLOWS];
 
-unsigned long sparkstarts[NUMSPARKS];
-int sparklengths[NUMSPARKS];
-int sparklocs[NUMSPARKS];
-
-unsigned char pixels[NUMPIXELS];
-
+uint16_t
+    numLEDs;                                // Number of pixels
+uint8_t
+   *pixels;                                 // LED values (1 byte ea.)
+   
 void setup() {
-  pinMode(matPin, INPUT);
-  digitalWrite(matPin, HIGH);
-
-  pinMode(gndPin, OUTPUT);
-  digitalWrite(gndPin, LOW);
+  pinMode(MATPIN, INPUT);
+  digitalWrite(MATPIN, HIGH);
+  pinMode(GNDPIN, OUTPUT);
+  digitalWrite(GNDPIN, LOW);
   
-  for (int i=0; i<NUMSPARKS; i++){
-    sparklocs[i]= random(NUMPIXELS);
-    sparkstarts[i]= random(2000);
-    sparklengths[i]= random(200);
-  }
+  numLEDs= NUMPIXELS;
+  pixels= NULL;
+
+  if(pixels) free(pixels);
+  
+  pixels = (uint8_t *)malloc(numLEDs);
+  
+  SPI.begin();
+  SPI.setClockDivider(SPI_CLOCK_DIV4); // 8 MHz (6 MHz on Pro Trinket 3V)
+  SPI.setBitOrder(MSBFIRST);
+  SPI.setDataMode(SPI_MODE0);
+  
+  clear();
+  show();  // Turn all LEDs off ASAP
+  delay(5);
+  clear();
+  show();  // Turn all LEDs off ASAP
   
   for (int i=0 ; i<NUMGLOWS; i++){
     glowstarts[i]= random(500);
     glowlocs[i]= GLOWRADIUS + random(NUMPIXELS-2*GLOWRADIUS);
   }
-
-#if defined(__AVR_ATtiny85__) && (F_CPU == 16000000L)
-  clock_prescale_set(clock_div_1); // Enable 16 MHz on Trinket
-#endif
-
-  strip.begin(); // Initialize pins for output
-  strip.show();  // Turn all LEDs off ASAP
 }
 
-// Runs 10 LEDs at a time along strip, cycling through red, green and blue.
-// This requires about 200 mA for all the 'on' pixels + 1 mA per 'off' pixel.
-
 void loop() {
-  for (int i=0; i< NUMPIXELS; i++) pixels[i]= 0;
+  
+  clear();
   
   for (int i=0; i<NUMGLOWS; i++){
     if (millis() > glowstarts[i] + GLOWTIME){
-      if (!digitalRead(matPin)){
+      if (!digitalRead(MATPIN)){
         glowstarts[i]= millis()+random(1000);
-        glowlocs[i]= random(NUMPIXELS);
-        //glowlocs[i]= GLOWRADIUS + random(NUMPIXELS-2*GLOWRADIUS);
+        glowlocs[i]= random(LOOPLENGTH);
       }
     }
     
@@ -91,42 +65,85 @@ void loop() {
     if (millis() > glowstarts[i]+GLOWTIME) level=0;
     addLight(glowlocs[i], level);
     for (int j=0; j<GLOWRADIUS; j++){
-      level=level/2;
+      //level=level/2;
       int loc= glowlocs[i];
       addLight(loc-j, level);
       addLight(loc+j, level);
     }
-    
-  }
-    
-  for (int i=0; i< NUMSPARKS; i++){
-    if (millis() > sparkstarts[i] + sparklengths[i]){
-      //sparklocs[i]= random(NUMPIXELS);
-      //sparkstarts[i]= millis()+random(2000);
-      //sparklengths[i]= random(200, 800);
-    }
-    //if (millis() > sparkstarts[i]) addLight(sparklocs[i], 255);
-    
   }
   
-  if(digitalRead(matPin)){
+  if(digitalRead(MATPIN)){
     for (int i=0; i<NUMPIXELS; i++) if (pixels[i] >0) pixels[i]--;
   }
   
-  for (int i=0; i<NUMPIXELS; i++) strip.setPixelColor(i, pixels[i]);
-  strip.show();                     // Refresh strip
+  for (int i=0; i<NUMPIXELS; i++) setPixelValue(i, pixels[i]);
+  show();                     // Refresh strip
   //delay(50);                        // Pause 20 milliseconds (~50 FPS)
   
 }
-
-
 
 void addLight(int loc, int val){
   if(loc < 0) return;
   if(loc >= NUMPIXELS) return;
   
-  int oldVal= pixels[loc];
+  int oldVal= getPixelValue(loc);
   int newVal= oldVal+val;
   if (newVal > 255) newVal= 255;
-  pixels[loc]= newVal;
+  setPixelValue(loc, newVal);
+  setPixelValue(loc+LOOPLENGTH, newVal);
 }
+
+// ISSUE DATA TO LED STRIP -------------------------------------------------
+// All of this is based on Adafruit's DotStar Library
+// We don't have enough RAM to use their library w/ 1200 Pixels
+// So their code was modified to only use one byte per pixel
+// cause we don't need RGB
+
+void show(void) {
+
+  if(!pixels) return;
+
+  uint8_t *ptr = pixels, i;            // -> LED data
+  uint16_t n   = numLEDs;              // Counter
+
+  uint8_t next;
+  for(i=0; i<3; i++) (void)SPI.transfer(0x00);    // First 3 start-frame bytes
+  SPDR = 0x00;                       // 4th is pipelined
+  do {                               // For each pixel...
+    while(!(SPSR & _BV(SPIF)));      //  Wait for prior byte out
+    SPDR = 0xFF;                     //  Pixel start
+    for(i=0; i<3; i++) {             //  For R,G,B...
+      next = *ptr;                   //   Read, scale
+      while(!(SPSR & _BV(SPIF)));    //    Wait for prior byte out
+      SPDR = next;                   //    Write scaled color
+    }
+    ptr++;                         //   inc pointer
+  } while(--n);
+  
+  while(!(SPSR & _BV(SPIF)));          // Wait for last byte out
+
+  // Four end-frame bytes are seemingly indistinguishable from a white
+  // pixel, and empirical testing suggests it can be left out...but it's
+  // always a good idea to follow the datasheet, in case future hardware
+  // revisions are more strict (e.g. might mandate use of end-frame
+  // before start-frame marker).  i.e. let's not remove this.
+  for(i=0; i<4; i++) (void)SPI.transfer(0xFF);
+}
+  
+void clear() { // Write 0s (off) to full pixel buffer
+  memset(pixels, 0, numLEDs);                   // 1 byte/pixel
+}
+
+void setPixelValue(uint16_t n, uint8_t v) {
+  if(n < numLEDs) {
+    uint8_t * p = &pixels[n];
+    p[0] = v;
+  }
+}
+
+uint8_t getPixelValue(uint16_t n) {
+  if(n >= numLEDs) return 0;
+  uint8_t *p = &pixels[n];
+  return p[0];
+}
+
