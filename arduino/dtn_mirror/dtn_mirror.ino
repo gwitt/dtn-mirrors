@@ -8,6 +8,11 @@
 
 #define MATPIN 2
 #define GNDPIN 3
+// LED clk: 13 -- Blue
+// LED dat: 11 -- Green
+// LED +5v: -- -- Red
+// LED GND: -- -- Yellow
+
 
 unsigned long glowstarts[NUMGLOWS];
 unsigned long glowlocs[NUMGLOWS];
